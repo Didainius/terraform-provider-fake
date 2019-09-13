@@ -126,6 +126,8 @@ func resourceNestedSetRead(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("could nor read data from file: %w", err)
 	}
 
+	d.SetId(d.Get("name").(string))
+
 	return nil
 }
 
