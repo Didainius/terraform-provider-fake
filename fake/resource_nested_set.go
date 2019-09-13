@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -61,7 +59,7 @@ func resourceNestedSet() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceNestedSetCreate,
 		Read:   resourceNestedSetRead,
-		// Update: resourceNestedSetUpdate,
+		Update: resourceNestedSetUpdate,
 		Delete: resourceNestedSetDelete,
 
 		Schema: map[string]*schema.Schema{
@@ -72,7 +70,6 @@ func resourceNestedSet() *schema.Resource {
 				Description: "Name defines filename for writing",
 			},
 			"nested_set": &schema.Schema{
-				ForceNew:    true,
 				Required:    true,
 				MinItems:    1,
 				MaxItems:    1,
@@ -88,9 +85,9 @@ func resourceNestedSetCreate(d *schema.ResourceData, m interface{}) error {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 
-	nestedSet := d.Get("nested_set")
+	// nestedSet := d.Get("nested_set")
 
-	spew.Fdump(GetTerraformStdout(), nestedSet)
+	// spew.Fdump(GetTerraformStdout(), nestedSet)
 
 	err := setToFile(d)
 	if err != nil {
@@ -98,6 +95,22 @@ func resourceNestedSetCreate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	d.SetId(d.Get("name").(string))
+
+	return resourceNestedSetRead(d, m)
+}
+
+func resourceNestedSetUpdate(d *schema.ResourceData, m interface{}) error {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+
+	// nestedSet := d.Get("nested_set")
+
+	// spew.Fdump(GetTerraformStdout(), nestedSet)
+
+	err := setToFile(d)
+	if err != nil {
+		return fmt.Errorf("could not set data to file: %w", err)
+	}
 
 	return resourceNestedSetRead(d, m)
 }
@@ -119,6 +132,13 @@ func resourceNestedSetRead(d *schema.ResourceData, m interface{}) error {
 func resourceNestedSetDelete(d *schema.ResourceData, m interface{}) error {
 	globalLock.Lock()
 	defer globalLock.Unlock()
+
+	err := os.Remove(d.Get("name").(string))
+
+	if err != nil {
+		d.SetId("")
+		return fmt.Errorf("could not remove file: %w", err)
+	}
 
 	return nil
 }
@@ -201,18 +221,9 @@ func getFromFile(fileName string, d *schema.ResourceData) error {
 	subset1FieldsInterface := make([]interface{}, 0)
 	subset1FieldsInterface = append(subset1FieldsInterface, subset1Fields)
 
-	// subset1FieldsSet := *schema.NewSet(schema.HashResource(subsetResource()), subset1FieldsInterface)
-
-	// EOF layer 1 hashing
-
-	// Create a parent "subset1" for fields 1 and 2
-	subset1Map := make(map[string]interface{})
-	subset1Map["subset1"] = subset1FieldsInterface
-
 	subset1 := *schema.NewSet(schema.HashResource(subsetResource()), subset1FieldsInterface)
 
-	subset1Interface := make([]interface{}, 0)
-	subset1Interface = append(subset1Interface, subset1)
+	// EOF Subset 1 fields
 
 	// Subset 2 fields
 	subset2Fields := make(map[string]interface{})
@@ -222,22 +233,10 @@ func getFromFile(fileName string, d *schema.ResourceData) error {
 	subset2FieldsInterface := make([]interface{}, 0)
 	subset2FieldsInterface = append(subset2FieldsInterface, subset2Fields)
 
-	// subset2FieldsSet := *schema.NewSet(schema.HashResource(subsetResource()), subset2FieldsInterface)
-
-	// Create a parent "subset2" for fields 1 and 2
-	subset2Map := make(map[string]interface{})
-	subset2Map["subset2"] = subset2Fields
-
-	// Insert child subset2Fields into parent subset2
-	// subset2Interface = append(subset2Interface, subset2Fields)
-	// Make TypeSet for subset2
 	subset2 := *schema.NewSet(schema.HashResource(subsetResource()), subset2FieldsInterface)
+	// EOF Subset 2 fields
 
-	subset2Interface := make([]interface{}, 0)
-	subset2Interface = append(subset2Interface, subset2)
-
-	// Create a parent "nested_set" for "subset1" and "subset2"
-
+	// "nested_set" layer
 	rootMap := make(map[string]interface{})
 	rootMap["subset1"] = &subset1
 	rootMap["subset2"] = &subset2
@@ -247,7 +246,7 @@ func getFromFile(fileName string, d *schema.ResourceData) error {
 
 	nestedSetSchema := *schema.NewSet(schema.HashResource(subset1Subset2Resource()), nestedSchemaInterface)
 
-	spew.Fdump(GetTerraformStdout(), nestedSetSchema)
+	// spew.Fdump(GetTerraformStdout(), &nestedSetSchema)
 
 	return d.Set("nested_set", &nestedSetSchema)
 }
