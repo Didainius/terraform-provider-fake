@@ -1,7 +1,10 @@
 package fake
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/hashicorp/terraform/terraform"
 
@@ -14,7 +17,6 @@ var testAccProviders = map[string]terraform.ResourceProvider{
 }
 
 func TestAccNestedSet(t *testing.T) {
-
 	resource.Test(t, resource.TestCase{
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
@@ -23,10 +25,23 @@ func TestAccNestedSet(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("fake_nested_set.first", "name", "set1"),
 					resource.TestCheckResourceAttrPair("data.fake_nested_set.first", "name", "fake_nested_set.first", "name"),
+					resource.TestCheckResourceAttrPair("data.fake_nested_set.first", "nested_set.#", "fake_nested_set.first", "nested_set.#"),
+					resource.ComposeTestCheckFunc(testAccSpewState()),
 				),
 			},
 		},
 	})
+}
+
+func testAccSpewState() resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+
+		rootModule := s.RootModule()
+		fmt.Println("====rootmodule====")
+		spew.Dump(rootModule)
+
+		return nil
+	}
 }
 
 const configText = `
@@ -46,8 +61,7 @@ resource "fake_nested_set" "first" {
 }
 
 data "fake_nested_set" "first" {
-	name = "set1"
+	name = "${fake_nested_set.first.name}"
 
-	depends_on = ["fake_nested_set.first"]
 }
 `
