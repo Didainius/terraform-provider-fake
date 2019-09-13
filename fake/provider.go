@@ -15,6 +15,7 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"fake_nested_set": resourceNestedSet(),
+			"fake_simple_set": resourceSimpleSet(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"fake_nested_set": dsNestedSet(),
