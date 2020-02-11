@@ -1,3 +1,4 @@
+// package fake is an implementation for fake terraform provider which is mainly used for testing
 package fake
 
 import (
